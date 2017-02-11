@@ -2,6 +2,7 @@
 #include <SFML/Window.hpp>
 
 #include <iostream>
+#include <fstream>
 #include <thread>
 
 #include "GUIElement.h"
@@ -36,15 +37,24 @@ double getRight(double x, double y)
 	return ParserRight.getValue();
 }
 
-void compute(std::shared_ptr<TextField> LeftInequalitySide, std::shared_ptr<TextField> RightInequalitySide, std::shared_ptr<StateButton> Operator, std::shared_ptr<PrecisionSlider> EpsilonSlider)
+struct InequalityComponents
 {
-	std::string temp = LeftInequalitySide->getValueString();
-	temp.erase(std::remove(temp.begin(), temp.end(), '\n'), temp.end());
-	ParserLeft.setCalculation(temp);
+	InequalityComponents(std::shared_ptr<TextField> Left, std::shared_ptr<TextField> Right, std::shared_ptr<StateButton> gOperator)
+	{
+		LeftSide = Left;
+		RightSide = Right;
+		Operator = gOperator;
+	}
 
-	temp = RightInequalitySide->getValueString();
-	temp.erase(std::remove(temp.begin(), temp.end(), '\n'), temp.end());
-	ParserRight.setCalculation(RightInequalitySide->getValueString());
+	std::shared_ptr<TextField> LeftSide;
+	std::shared_ptr<TextField> RightSide;
+	std::shared_ptr<StateButton> Operator;
+};
+
+void compute(InequalityComponents Inequality, std::shared_ptr<PrecisionSlider> EpsilonSlider)
+{
+	ParserLeft.setCalculation(Inequality.LeftSide->getValueString());
+	ParserRight.setCalculation(Inequality.RightSide->getValueString());
 
 	ParserLeft.parse();
 	ParserRight.parse();
@@ -61,21 +71,21 @@ void compute(std::shared_ptr<TextField> LeftInequalitySide, std::shared_ptr<Text
 			double x = CenterPosition.x - RenderArea + (double)StepX*RenderArea * 2 / (double)Resolution;
 			double y = ((0-CenterPosition.y) - RenderArea + (double)StepY*RenderArea * 2 / (double)Resolution)*(-1);
 
-			if (Operator->getState() == '<')
+			if (Inequality.Operator->getState() == '<')
 			{
 				if (getLeft(x, y) < getRight(x, y))
 				{
 					Result.setPixel(StepX, StepY, sf::Color::Black);
 				}
 			}
-			else if (Operator->getState() == '>')
+			else if (Inequality.Operator->getState() == '>')
 			{
 				if (getLeft(x, y) > getRight(x, y))
 				{
 					Result.setPixel(StepX, StepY, sf::Color::Black);
 				}
 			}
-			else if (Operator->getState() == '=')
+			else if (Inequality.Operator->getState() == '=')
 			{
 				if (getLeft(x, y) > getRight(x, y) - epsilon&&getLeft(x, y) < getRight(x, y) + epsilon)
 				{
@@ -89,8 +99,58 @@ void compute(std::shared_ptr<TextField> LeftInequalitySide, std::shared_ptr<Text
 	isComputed = true;
 }
 
+void saveImage(InequalityComponents Inequality)
+{
+	std::fstream config("config.cfg");
+	int ordinal = 0;
+
+	if (config.is_open())
+	{
+		config >> ordinal;
+		config.close();
+		config.open("config.cfg", std::ofstream::trunc | std::ofstream::out );
+		config << ordinal + 1;
+	}
+	else
+	{
+		config.open("config.cfg", std::ofstream::trunc | std::ofstream::out );
+		config << 1;
+	}
+	config.close();
+
+	Result.saveToFile(std::to_string(ordinal)+".png");
+
+	std::ofstream txt(std::to_string(ordinal)+".txt");
+
+	if (txt.is_open())
+	{
+		txt << Inequality.LeftSide->getValueString() <<"\n";
+		txt << Inequality.Operator->getState() << "\n";
+		txt << Inequality.RightSide->getValueString() << "\n";
+		txt.close();
+	}
+}
+
 int main(int argc, char** argv)
 {
+	std::string
+		left = "abs(sin((P*(pow(x,2)+pow(y,2)))/16)+sin((P*(x+(2*y)))/4)+sin((P*((2*x)-y))/4))",
+		right = "0.2";
+
+	if (argc == 2)
+	{
+		std::string filePath = argv[1];
+		char trash=19, trash2=20, trash3=21;
+
+		std::ifstream file(filePath);
+		if (file.is_open())
+		{
+			file >> left;
+			file >> trash;
+			file >> right;
+		}
+	}
+
 	std::vector<std::shared_ptr<GUIElement>> GUI;
 	Window.create(sf::VideoMode(Pulpit.width, Pulpit.height), "Graph Generator", sf::Style::Fullscreen);
 
@@ -132,11 +192,11 @@ int main(int argc, char** argv)
 
 	std::shared_ptr<TextField> LeftInequalitySide(new TextField(sf::IntRect(margin, unit*14, SettingsDimensions.width/2-margin*3, unit*7), FieldType::All, 5));
 	GUI.push_back(std::shared_ptr<GUIElement>(LeftInequalitySide));
-	LeftInequalitySide->setString("abs(sin((P*(pow(x,2)+pow(y,2)))/16)+sin((P*(x+(2*y)))/4)+sin((P*((2*x)-y))/4))");
+	LeftInequalitySide->setString(left);
 
 	std::shared_ptr<TextField> RightInequalitySide(new TextField(sf::IntRect(SettingsDimensions.width / 2+margin*2, unit*14, SettingsDimensions.width / 2 - margin * 3, unit * 7), FieldType::All, 5));
 	GUI.push_back(std::shared_ptr<GUIElement>(RightInequalitySide));
-	RightInequalitySide->setString("0.2");
+	RightInequalitySide->setString(right);
 
 	std::shared_ptr<StateButton> Operator(new StateButton(sf::IntRect(SettingsDimensions.width / 2 - margin, unit * 17.5f - margin, margin * 2, margin * 2)));
 	GUI.push_back(std::shared_ptr<GUIElement>(Operator));
@@ -189,13 +249,13 @@ int main(int argc, char** argv)
 			Result.create(Resolution, Resolution, sf::Color::White);
 
 			isComputed = false;
-			computing = std::thread(compute, LeftInequalitySide, RightInequalitySide, Operator, EpsilonSlider);
+			computing = std::thread(compute, InequalityComponents(LeftInequalitySide, RightInequalitySide, Operator), EpsilonSlider);
 			computing.detach();
 		}
 
 		if (SaveButton->clicked())
 		{
-			Result.saveToFile("result.png");
+			saveImage(InequalityComponents(LeftInequalitySide, RightInequalitySide, Operator));
 		}
 
 		if (isComputed)
