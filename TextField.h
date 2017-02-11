@@ -20,7 +20,7 @@ public:
 	void eraseCharacter();
 	void draw(sf::RenderTarget& target);
 	void setString(std::string string) { contentText.setString(string);	actualizeText(); }
-	std::string getValueString() { return contentText.getString(); }
+	std::string getValueString();
 	int getValueInt() { std::string temp = contentText.getString(); return std::atoi(temp.c_str()); }
 private:
 	bool isTypeMatching(sf::Event& event);
