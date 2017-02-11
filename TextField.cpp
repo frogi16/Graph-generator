@@ -63,6 +63,13 @@ void TextField::draw(sf::RenderTarget & target)
 	target.draw(contentText);
 }
 
+std::string TextField::getValueString()
+{
+	std::string temp = contentText.getString();
+	temp.erase(std::remove(temp.begin(), temp.end(), '\n'), temp.end());
+	return temp;
+}
+
 bool TextField::isTypeMatching(sf::Event & event)
 {
 	if (type == FieldType::Number)
