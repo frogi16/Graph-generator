@@ -2,7 +2,8 @@
 
 Graph generator can draw images based on mathematical inequalities (or equations).
 
-![preview](https://user-images.githubusercontent.com/44038381/46818015-7e1ae580-cd80-11e8-8f40-de346c5ee62c.PNG)
+![preview](https://user-images.githubusercontent.com/44038381/60626081-e798c380-9de9-11e9-993e-3036807d0a8b.PNG)
+
 
 Interpreting and computing given formulas is handled by great library exprtk and primitive GUI relies on SFML.
 
