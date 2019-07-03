@@ -2,13 +2,13 @@
 
 TextDisplayer::TextDisplayer(sf::IntRect dimensions, std::string string)
 {
-	text.setCharacterSize(dimensions.height*0.6f);
+	text.setCharacterSize(static_cast<int>(dimensions.height*0.6f));
 	initialize(dimensions.left, dimensions.top+dimensions.height / 2.0f, string);
 }
 
 TextDisplayer::TextDisplayer(sf::Vector2i position, float characterSize, std::string string)
 {
-	text.setCharacterSize(characterSize);
+	text.setCharacterSize(static_cast<int>(characterSize));
 	initialize(position.x, position.y, string);
 }
 

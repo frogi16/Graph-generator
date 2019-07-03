@@ -3,6 +3,7 @@
 #include "GUIElement.h"
 #include <SFML\Graphics\RectangleShape.hpp>
 #include <SFML\Graphics\Text.hpp>
+#include <SFML\System\Clock.hpp>
 
 enum class FieldType
 {
@@ -20,9 +21,12 @@ public:
 	void eraseCharacter();
 	void draw(sf::RenderTarget& target);
 	void setString(std::string string) { contentText.setString(string);	actualizeText(); }
+	void showError();
 	std::string getValueString();
 	int getValueInt() { std::string temp = contentText.getString(); return std::atoi(temp.c_str()); }
 private:
+	sf::Clock errorTimer;
+	sf::Time errorTime;
 	bool isTypeMatching(sf::Event& event);
 	void actualizeText();
 	bool isHovered, isActive;

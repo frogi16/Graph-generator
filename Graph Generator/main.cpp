@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
+#include <forward_list>
 
 #include "GUIElement.h"
 #include "Slider.h"
@@ -15,7 +16,7 @@
 
 #include "MathematicalParser.h"
 
-MathematicalParser ParserLeft, ParserRight;
+MathematicalParser ParserLeft, ParserRight, PParser;
 sf::Image Result;
 int Resolution;
 float RenderArea;
@@ -27,76 +28,94 @@ bool isComputed = false;
 
 double getLeft(double x, double y)
 {
-	ParserLeft.update(x, y);
+	ParserLeft.update(x, y, PParser.getValue());
 	return ParserLeft.getValue();
 }
 
 double getRight(double x, double y)
 {
-	ParserRight.update(x, y);
+	ParserRight.update(x, y, PParser.getValue());
 	return ParserRight.getValue();
 }
 
 struct InequalityComponents
 {
-	InequalityComponents(std::shared_ptr<TextField> Left, std::shared_ptr<TextField> Right, std::shared_ptr<StateButton> gOperator)
+	InequalityComponents(std::shared_ptr<TextField> Left, std::shared_ptr<TextField> Right, std::shared_ptr<TextField> pField, std::shared_ptr<StateButton> gOperator)
 	{
 		LeftSide = Left;
 		RightSide = Right;
+		P = pField;
 		Operator = gOperator;
 	}
 
 	std::shared_ptr<TextField> LeftSide;
 	std::shared_ptr<TextField> RightSide;
+	std::shared_ptr<TextField> P;
 	std::shared_ptr<StateButton> Operator;
 };
 
 void compute(InequalityComponents Inequality, std::shared_ptr<PrecisionSlider> EpsilonSlider)
 {
+	PParser.setCalculation(Inequality.P->getValueString());
 	ParserLeft.setCalculation(Inequality.LeftSide->getValueString());
 	ParserRight.setCalculation(Inequality.RightSide->getValueString());
 
-	ParserLeft.parse();
-	ParserRight.parse();
+	PParser.parse();
 
-	float epsilon = 1.0f / EpsilonSlider->getValue();
-
-	for (size_t StepX = 0; StepX < Resolution; StepX++)
+	if (!ParserLeft.parse())
 	{
-		LoadingLine.setSize(sf::Vector2f(2, Pulpit.height / (float)Resolution * StepX));
-		LoadingLine.setPosition(Pulpit.width - Pulpit.height - 2, 0);
+		Inequality.LeftSide->showError();
+	}
+	else if(!ParserRight.parse())
+	{
+		Inequality.RightSide->showError();
+	}
+	else if (!PParser.parse())
+	{
+		Inequality.P->showError();
+	}
+	else
+	{
+		float epsilon = 1.0f / EpsilonSlider->getValue();
 
-		for (size_t StepY = 0; StepY < Resolution; StepY++)
+		for (size_t StepX = 0; StepX < Resolution; StepX++)
 		{
-			double x = CenterPosition.x - RenderArea + (double)StepX*RenderArea * 2 / (double)Resolution;
-			double y = ((0-CenterPosition.y) - RenderArea + (double)StepY*RenderArea * 2 / (double)Resolution)*(-1);
+			LoadingLine.setSize(sf::Vector2f(2, Pulpit.height / (float)Resolution * StepX));
+			LoadingLine.setPosition(Pulpit.width - Pulpit.height - 2, 0);
 
-			if (Inequality.Operator->getState() == '<')
+			for (size_t StepY = 0; StepY < Resolution; StepY++)
 			{
-				if (getLeft(x, y) < getRight(x, y))
+				double x = CenterPosition.x - RenderArea + (double)StepX*RenderArea * 2 / (double)Resolution;
+				double y = ((0 - CenterPosition.y) - RenderArea + (double)StepY*RenderArea * 2 / (double)Resolution)*(-1);
+				PParser.update(x, y, 0);
+
+				if (Inequality.Operator->getState() == '<')
 				{
-					Result.setPixel(StepX, StepY, sf::Color::Black);
+					if (getLeft(x, y) < getRight(x, y))
+					{
+						Result.setPixel(StepX, StepY, sf::Color::Black);
+					}
 				}
-			}
-			else if (Inequality.Operator->getState() == '>')
-			{
-				if (getLeft(x, y) > getRight(x, y))
+				else if (Inequality.Operator->getState() == '>')
 				{
-					Result.setPixel(StepX, StepY, sf::Color::Black);
+					if (getLeft(x, y) > getRight(x, y))
+					{
+						Result.setPixel(StepX, StepY, sf::Color::Black);
+					}
 				}
-			}
-			else if (Inequality.Operator->getState() == '=')
-			{
-				if (getLeft(x, y) > getRight(x, y) - epsilon&&getLeft(x, y) < getRight(x, y) + epsilon)
+				else if (Inequality.Operator->getState() == '=')
 				{
-					Result.setPixel(StepX, StepY, sf::Color::Black);
+					if (getLeft(x, y) > getRight(x, y) - epsilon&&getLeft(x, y) < getRight(x, y) + epsilon)
+					{
+						Result.setPixel(StepX, StepY, sf::Color::Black);
+					}
 				}
 			}
 		}
-	}
 
-	LoadingLine.setSize(sf::Vector2f(2, 0));
-	isComputed = true;
+		LoadingLine.setSize(sf::Vector2f(2, 0));
+		isComputed = true;
+	}
 }
 
 void saveImage(InequalityComponents Inequality)
@@ -127,6 +146,7 @@ void saveImage(InequalityComponents Inequality)
 		txt << Inequality.LeftSide->getValueString() <<"\n";
 		txt << Inequality.Operator->getState() << "\n";
 		txt << Inequality.RightSide->getValueString() << "\n";
+		txt << Inequality.P->getValueString() << "\n";
 		txt.close();
 	}
 }
@@ -135,12 +155,13 @@ int main(int argc, char** argv)
 {
 	std::string
 		left = "abs(sin((P*(pow(x,2)+pow(y,2)))/16)+sin((P*(x+(2*y)))/4)+sin((P*((2*x)-y))/4))",
-		right = "0.2";
+		right = "0.2",
+		pString = "pow((10/9),(pow(x,2)+pow(y,2))/16)";
 
 	if (argc == 2)
 	{
 		std::string filePath = argv[1];
-		char trash=19, trash2=20, trash3=21;
+		char trash;
 
 		std::ifstream file(filePath);
 		if (file.is_open())
@@ -148,6 +169,8 @@ int main(int argc, char** argv)
 			file >> left;
 			file >> trash;
 			file >> right;
+			file >> trash;
+			file >> pString;
 		}
 	}
 
@@ -201,6 +224,11 @@ int main(int argc, char** argv)
 	std::shared_ptr<StateButton> Operator(new StateButton(sf::IntRect(SettingsDimensions.width / 2 - margin, unit * 17.5f - margin, margin * 2, margin * 2)));
 	GUI.push_back(std::shared_ptr<GUIElement>(Operator));
 
+	GUI.push_back(std::shared_ptr<GUIElement>(new TextDisplayer(sf::IntRect(margin, unit * 21, SettingsDimensions.width / 2, unit * 2), "P variable")));
+	std::shared_ptr<TextField> P(new TextField(sf::IntRect(margin, unit * 24, SettingsDimensions.width / 2, unit * 2), FieldType::All, 2));
+	GUI.push_back(std::shared_ptr<GUIElement>(P));
+	P->setString(pString);
+
 	std::shared_ptr<Button> GenerateButton(new Button(sf::IntRect(SettingsDimensions.width/2-SettingsDimensions.width/6, SettingsDimensions.height-unit*6, SettingsDimensions.width/3, unit*4), "Generate"));
 	GUI.push_back(std::shared_ptr<GUIElement>(GenerateButton));
 
@@ -249,13 +277,13 @@ int main(int argc, char** argv)
 			Result.create(Resolution, Resolution, sf::Color::White);
 
 			isComputed = false;
-			computing = std::thread(compute, InequalityComponents(LeftInequalitySide, RightInequalitySide, Operator), EpsilonSlider);
+			computing = std::thread(compute, InequalityComponents(LeftInequalitySide, RightInequalitySide, P, Operator), EpsilonSlider);
 			computing.detach();
 		}
 
 		if (SaveButton->clicked())
 		{
-			saveImage(InequalityComponents(LeftInequalitySide, RightInequalitySide, Operator));
+			saveImage(InequalityComponents(LeftInequalitySide, RightInequalitySide, P, Operator));
 		}
 
 		if (isComputed)

@@ -2,7 +2,7 @@
 
 
 Slider::Slider(float minRange, float maxRange, float defaultValue, sf::IntRect dimensions) : 
-	lineDimensions(dimensions.left, dimensions.top, dimensions.width-(dimensions.height*1.4f)-2, dimensions.height*0.2f),
+	lineDimensions(dimensions.left, dimensions.top, static_cast<int>(dimensions.width-(dimensions.height*1.4f)-2), static_cast<int>(dimensions.height*0.2f)),
 	isHovered(false),
 	isGrabbed(false)
 {
@@ -12,12 +12,12 @@ Slider::Slider(float minRange, float maxRange, float defaultValue, sf::IntRect d
 
 	arial.loadFromFile("arial.ttf");
 
-	button.setOrigin(dimensions.height*0.333, 0);
-	button.setSize(sf::Vector2f(dimensions.height*0.6666, dimensions.height));
+	button.setOrigin(dimensions.height*0.333f, 0);
+	button.setSize(sf::Vector2f(dimensions.height*0.6666f, dimensions.height));
 	button.setFillColor(sf::Color::White);
 	button.setOutlineColor(sf::Color::Black);
 	button.setOutlineThickness(1);
-	button.setPosition(0, dimensions.top);
+	button.setPosition(0.0f, static_cast<float>(dimensions.top));
 	adjustButtonPositionToValue();
 
 	line.setPosition(lineDimensions.left, lineDimensions.top+dimensions.height*0.4f);
@@ -37,11 +37,11 @@ Slider::Slider(float minRange, float maxRange, float defaultValue, sf::IntRect d
 	valueText.setFont(arial);
 
 	float charSize = dimensions.height*0.45f;
-	valueText.setCharacterSize(charSize);
+	valueText.setCharacterSize(static_cast<int>(charSize));
 	while (valueText.getLocalBounds().width > valueBox.getLocalBounds().width)
 	{
 		charSize *= 0.9f;
-		valueText.setCharacterSize(charSize);
+		valueText.setCharacterSize(static_cast<int>(charSize));
 	}
 
 	actualizeText();
@@ -65,12 +65,12 @@ void Slider::updateMouse(const sf::Mouse & mouse)
 		}
 		else if(mouse.getPosition().x<lineDimensions.left)
 		{
-			value = range.first;
+			value = static_cast<int>(range.first);
 			adjustButtonPositionToValue();
 		}
 		else if (mouse.getPosition().x>lineDimensions.left+ lineDimensions.width)
 		{
-			value = range.second;
+			value = static_cast<int>(range.second);
 			adjustButtonPositionToValue();
 		}
 	}
@@ -99,6 +99,14 @@ void Slider::adjustButtonPositionToValue()
 void Slider::actualizeText()
 {
 	valueText.setString(std::to_string(value));
+
+	unsigned int charSize = valueText.getCharacterSize();
+	while (valueText.getLocalBounds().width > valueBox.getLocalBounds().width)
+	{
+		charSize *= 0.9f;
+		valueText.setCharacterSize(static_cast<int>(charSize));
+	}
+
 	valueText.setOrigin(valueText.getLocalBounds().left + valueText.getLocalBounds().width / 2, valueText.getLocalBounds().top + valueText.getLocalBounds().height / 2);	//center the origin point
 	valueText.setPosition(valueBox.getPosition().x + valueBox.getSize().x / 2, valueBox.getPosition().y + valueBox.getSize().y / 2);	//set the text's origin's position exactly as box's origin's position
 }

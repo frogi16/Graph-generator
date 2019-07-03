@@ -13,7 +13,7 @@ Button::Button(sf::IntRect dimensions, std::string text) :
 	buttonText.setColor(sf::Color::Black);
 	buttonText.setCharacterSize(dimensions.height/3);
 
-	button.setPosition(dimensions.left, dimensions.top);
+	button.setPosition(static_cast<float>(dimensions.left), static_cast<float>(dimensions.top));
 	button.setFillColor(sf::Color::White);
 	button.setOutlineColor(sf::Color::Black);
 	button.setOutlineThickness(1);

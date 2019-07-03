@@ -7,7 +7,8 @@ TextField::TextField(sf::IntRect dimensions, FieldType type, int textLines) :
 	type(type),
 	textLines(textLines),
 	isActive(false),
-	isHovered(true)
+	isHovered(true),
+	errorTime(sf::seconds(3))
 {
 	arial.loadFromFile("arial.ttf");
 
@@ -17,7 +18,7 @@ TextField::TextField(sf::IntRect dimensions, FieldType type, int textLines) :
 	box.setOutlineThickness(1);
 
 	contentText.setColor(sf::Color::Black);
-	contentText.setCharacterSize(dimensions.height*0.9f / textLines);
+	contentText.setCharacterSize(static_cast<int>(dimensions.height*0.9f / textLines));
 	contentText.setPosition(box.getPosition());
 	contentText.setFont(arial);
 	contentText.setString("0");
@@ -59,8 +60,19 @@ void TextField::eraseCharacter()
 
 void TextField::draw(sf::RenderTarget & target)
 {
+	if (errorTimer.getElapsedTime().asSeconds()>errorTime.asSeconds())
+	{
+		box.setOutlineColor(sf::Color::Black);
+	}
+
 	target.draw(box);
 	target.draw(contentText);
+}
+
+void TextField::showError()
+{
+	box.setOutlineColor(sf::Color::Red);
+	errorTimer.restart();
 }
 
 std::string TextField::getValueString()
